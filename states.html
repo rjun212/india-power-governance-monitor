@@ -1,7 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>State Authorities - India Power Governance Monitor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    select {
+      padding: 6px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+
 <body>
   <h1>State Authorities</h1>
 
-  <table border="1" id="state-table">
+  <label for="stateFilter"><strong>Filter by State:</strong></label>
+  <select id="stateFilter">
+    <option value="All">All</option>
+  </select>
+
+  <br><br>
+
+  <table id="state-table">
     <tr>
       <th>Date</th>
       <th>State</th>
@@ -17,27 +55,63 @@
     fetch("data/states.json")
       .then(response => response.json())
       .then(data => {
+
         const table = document.getElementById("state-table");
+        const filter = document.getElementById("stateFilter");
 
-        data.forEach(item => {
-          const row = table.insertRow();
+        // Populate unique states in dropdown
+        const states = [...new Set(data.map(item => item.state))];
 
-          row.insertCell(0).innerText = item.date;
-          row.insertCell(1).innerText = item.state;
-          row.insertCell(2).innerText = item.authority;
-          row.insertCell(3).innerText = item.category;
-          row.insertCell(4).innerText = item.doc_type;
-          row.insertCell(5).innerText = item.title;
-
-          const linkCell = row.insertCell(6);
-          const link = document.createElement("a");
-          link.href = item.link;
-          link.innerText = "View";
-          linkCell.appendChild(link);
+        states.forEach(state => {
+          const option = document.createElement("option");
+          option.value = state;
+          option.text = state;
+          filter.appendChild(option);
         });
+
+        function renderTable(selectedState) {
+
+          // Clear old rows except header
+          while (table.rows.length > 1) {
+            table.deleteRow(1);
+          }
+
+          // Sort newest first
+          data.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+          data.forEach(item => {
+            if (selectedState === "All" || item.state === selectedState) {
+
+              const row = table.insertRow();
+
+              row.insertCell(0).innerText = item.date;
+              row.insertCell(1).innerText = item.state;
+              row.insertCell(2).innerText = item.authority;
+              row.insertCell(3).innerText = item.category;
+              row.insertCell(4).innerText = item.doc_type;
+              row.insertCell(5).innerText = item.title;
+
+              const linkCell = row.insertCell(6);
+              const link = document.createElement("a");
+              link.href = item.link;
+              link.target = "_blank";
+              link.innerText = "View";
+              linkCell.appendChild(link);
+            }
+          });
+        }
+
+        filter.addEventListener("change", () => {
+          renderTable(filter.value);
+        });
+
+        renderTable("All");
+
+      })
+      .catch(error => {
+        console.error("Error loading data:", error);
       });
   </script>
 
   <br>
-  <a href="index.html">Back to Home</a>
-</body>
+  <a href="index.html">Back t

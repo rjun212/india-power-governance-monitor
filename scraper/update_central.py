@@ -4,51 +4,110 @@ import json
 from datetime import datetime
 import os
 
-URL = "https://cercind.gov.in/orders.html"
-
-headers = {
+HEADERS = {
     "User-Agent": "Mozilla/5.0"
 }
 
 def scrape_cerc():
+    URL = "https://cercind.gov.in/orders.html"
+    items = []
+
     try:
-        response = requests.get(
-            URL,
-            headers=headers,
-            timeout=15,
-            verify=False
-        )
-
+        response = requests.get(URL, headers=HEADERS, timeout=15, verify=False)
         soup = BeautifulSoup(response.text, "html.parser")
-
-        items = []
 
         links = soup.find_all("a")
 
         for link in links:
             text = link.get_text(strip=True)
+            href = link.get("href")
 
-            if text and any(keyword in text for keyword in ["Order", "Regulation", "Consultation"]):
-                href = link.get("href")
+            if text and href and any(k in text for k in ["Order", "Regulation", "Consultation"]):
 
-                if href:
-                    if not href.startswith("http"):
-                        href = "https://cercind.gov.in/" + href
+                if not href.startswith("http"):
+                    href = "https://cercind.gov.in/" + href
 
-                    items.append({
-                        "date": datetime.today().strftime("%Y-%m-%d"),
-                        "authority": "CERC",
-                        "category": "Order",
-                        "doc_type": "Final",
-                        "title": text,
-                        "link": href
-                    })
-
-        return items
+                items.append({
+                    "date": datetime.today().strftime("%Y-%m-%d"),
+                    "authority": "CERC",
+                    "category": "Regulation Amendment" if "Regulation" in text else "Order",
+                    "doc_type": "Draft" if "Consultation" in text else "Final",
+                    "title": text,
+                    "link": href
+                })
 
     except Exception as e:
-        print("Error scraping CERC:", e)
-        return []
+        print("CERC error:", e)
+
+    return items
+
+
+def scrape_mop():
+    URL = "https://powermin.gov.in/en/press-release"
+    items = []
+
+    try:
+        response = requests.get(URL, headers=HEADERS, timeout=15)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        links = soup.find_all("a")
+
+        for link in links:
+            text = link.get_text(strip=True)
+            href = link.get("href")
+
+            if text and href and any(k in text for k in ["Notification", "Guideline", "Amendment"]):
+
+                if not href.startswith("http"):
+                    href = "https://powermin.gov.in" + href
+
+                items.append({
+                    "date": datetime.today().strftime("%Y-%m-%d"),
+                    "authority": "MoP",
+                    "category": "Scheme Notification",
+                    "doc_type": "Final",
+                    "title": text,
+                    "link": href
+                })
+
+    except Exception as e:
+        print("MoP error:", e)
+
+    return items
+
+
+def scrape_mnre():
+    URL = "https://mnre.gov.in/press-releases/"
+    items = []
+
+    try:
+        response = requests.get(URL, headers=HEADERS, timeout=15)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        links = soup.find_all("a")
+
+        for link in links:
+            text = link.get_text(strip=True)
+            href = link.get("href")
+
+            if text and href and any(k in text for k in ["Guideline", "Notification", "Amendment"]):
+
+                if not href.startswith("http"):
+                    href = "https://mnre.gov.in" + href
+
+                items.append({
+                    "date": datetime.today().strftime("%Y-%m-%d"),
+                    "authority": "MNRE",
+                    "category": "Scheme Notification",
+                    "doc_type": "Final",
+                    "title": text,
+                    "link": href
+                })
+
+    except Exception as e:
+        print("MNRE error:", e)
+
+    return items
 
 
 def load_existing():
@@ -67,9 +126,13 @@ def deduplicate(existing, new):
 
 
 def main():
-    new_data = scrape_cerc()
+    new_items = []
+    new_items += scrape_cerc()
+    new_items += scrape_mop()
+    new_items += scrape_mnre()
+
     existing_data = load_existing()
-    combined = deduplicate(existing_data, new_data)
+    combined = deduplicate(existing_data, new_items)
 
     combined.sort(key=lambda x: x["date"], reverse=True)
 

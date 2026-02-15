@@ -3,51 +3,47 @@
 <head>
   <title>India Power Governance Monitor</title>
   <meta http-equiv="refresh" content="1800">
-
   <style>
     body { font-family: Arial; margin: 40px; }
     h2 { margin-top: 40px; }
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
     th, td { border: 1px solid #ccc; padding: 8px; }
     th { background: #f2f2f2; }
-    .timestamp { color: gray; font-size: 14px; }
   </style>
 </head>
 
 <body>
 
 <h1>India Power Governance Monitor</h1>
-<div class="timestamp">Auto-refreshes every 30 minutes</div>
 
 <h2>🏛 Central Governance</h2>
 <table id="central-table">
-<tr><th>Date</th><th>Publication</th><th>Title</th><th>Link</th></tr>
+<tr><th>Title</th><th>Date</th><th>Link</th></tr>
 </table>
 
 <h2>🏙 State Governance</h2>
 <table id="state-table">
-<tr><th>Date</th><th>Publication</th><th>Title</th><th>Link</th></tr>
+<tr><th>Title</th><th>Date</th><th>Link</th></tr>
 </table>
 
 <h2>🌍 Global Renewable & Storage</h2>
 <table id="global-table">
-<tr><th>Date</th><th>Publication</th><th>Title</th><th>Link</th></tr>
+<tr><th>Title</th><th>Date</th><th>Link</th></tr>
 </table>
 
 <h2>📊 Clean Energy Reports</h2>
-<table id="reports-table">
-<tr><th>Date</th><th>Publication</th><th>Title</th><th>Link</th></tr>
+<table id="report-table">
+<tr><th>Title</th><th>Date</th><th>Link</th></tr>
 </table>
 
 <script>
-function renderTable(data, tableId) {
+function render(data, tableId) {
   const table = document.getElementById(tableId);
   data.forEach(item => {
     const row = table.insertRow();
-    row.insertCell(0).innerText = item.date;
-    row.insertCell(1).innerText = item.publication;
-    row.insertCell(2).innerText = item.title;
-    const linkCell = row.insertCell(3);
+    row.insertCell(0).innerText = item.title;
+    row.insertCell(1).innerText = item.date;
+    const linkCell = row.insertCell(2);
     const link = document.createElement("a");
     link.href = item.link;
     link.target = "_blank";
@@ -56,21 +52,10 @@ function renderTable(data, tableId) {
   });
 }
 
-fetch("data/central.json")
-.then(r => r.json())
-.then(d => renderTable(d, "central-table"));
-
-fetch("data/state.json")
-.then(r => r.json())
-.then(d => renderTable(d, "state-table"));
-
-fetch("data/global.json")
-.then(r => r.json())
-.then(d => renderTable(d, "global-table"));
-
-fetch("data/reports.json")
-.then(r => r.json())
-.then(d => renderTable(d, "reports-table"));
+fetch("data/central.json").then(r => r.json()).then(d => render(d, "central-table"));
+fetch("data/state.json").then(r => r.json()).then(d => render(d, "state-table"));
+fetch("data/global.json").then(r => r.json()).then(d => render(d, "global-table"));
+fetch("data/reports.json").then(r => r.json()).then(d => render(d, "report-table"));
 </script>
 
 </body>

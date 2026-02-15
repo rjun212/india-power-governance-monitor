@@ -1,4 +1,4 @@
-name: Update Central Data
+name: Update Power Governance Feeds
 
 on:
   schedule:
@@ -29,6 +29,6 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add data/central.json
-          git add data/media.json
-          git commit -m "Auto update central and media data" || echo "No changes"
+          git add data/state.json
+          git commit -m "Auto update central and state feeds" || echo "No changes"
           git push

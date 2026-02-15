@@ -2,11 +2,10 @@
 <html>
 <head>
   <title>India Power Governance Monitor</title>
-  <meta http-equiv="refresh" content="1800"> <!-- Auto refresh every 30 min -->
+  <meta http-equiv="refresh" content="1800">
 
   <style>
     body { font-family: Arial; margin: 40px; }
-    h1 { margin-bottom: 5px; }
     h2 { margin-top: 40px; }
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
     th, td { border: 1px solid #ccc; padding: 8px; }
@@ -18,39 +17,36 @@
 <body>
 
 <h1>India Power Governance Monitor</h1>
-<div class="timestamp" id="last-updated"></div>
+<div class="timestamp">Auto-refreshes every 30 minutes</div>
 
-<h2>🏛 Central Governance Feed</h2>
+<h2>🏛 Central Governance</h2>
 <table id="central-table">
-<tr>
-  <th>Date</th>
-  <th>Publication</th>
-  <th>Title</th>
-  <th>Link</th>
-</tr>
+<tr><th>Date</th><th>Publication</th><th>Title</th><th>Link</th></tr>
 </table>
 
-<h2>🏙 State Governance Feed</h2>
+<h2>🏙 State Governance</h2>
 <table id="state-table">
-<tr>
-  <th>Date</th>
-  <th>Publication</th>
-  <th>Title</th>
-  <th>Link</th>
-</tr>
+<tr><th>Date</th><th>Publication</th><th>Title</th><th>Link</th></tr>
+</table>
+
+<h2>🌍 Global Renewable & Storage</h2>
+<table id="global-table">
+<tr><th>Date</th><th>Publication</th><th>Title</th><th>Link</th></tr>
+</table>
+
+<h2>📊 Clean Energy Reports</h2>
+<table id="reports-table">
+<tr><th>Date</th><th>Publication</th><th>Title</th><th>Link</th></tr>
 </table>
 
 <script>
-
 function renderTable(data, tableId) {
   const table = document.getElementById(tableId);
-
   data.forEach(item => {
     const row = table.insertRow();
     row.insertCell(0).innerText = item.date;
     row.insertCell(1).innerText = item.publication;
     row.insertCell(2).innerText = item.title;
-
     const linkCell = row.insertCell(3);
     const link = document.createElement("a");
     link.href = item.link;
@@ -61,21 +57,20 @@ function renderTable(data, tableId) {
 }
 
 fetch("data/central.json")
-.then(response => response.json())
-.then(data => {
-  renderTable(data, "central-table");
-});
+.then(r => r.json())
+.then(d => renderTable(d, "central-table"));
 
 fetch("data/state.json")
-.then(response => response.json())
-.then(data => {
-  renderTable(data, "state-table");
-});
+.then(r => r.json())
+.then(d => renderTable(d, "state-table"));
 
-// Display last updated time
-document.getElementById("last-updated").innerText =
-  "Last updated: " + new Date().toLocaleString();
+fetch("data/global.json")
+.then(r => r.json())
+.then(d => renderTable(d, "global-table"));
 
+fetch("data/reports.json")
+.then(r => r.json())
+.then(d => renderTable(d, "reports-table"));
 </script>
 
 </body>

@@ -11,40 +11,51 @@ RSS_FEEDS = {
     "ET Top Stories": "https://energy.economictimes.indiatimes.com/rss/topstories",
     "Mercom India": "https://www.mercomindia.com/feed",
     "PowerLine": "https://powerline.net.in/feed/",
-    "PIB Power Ministry": "https://www.pib.gov.in/newsite/pmreleases.aspx?mincode=28&reg=3&lang=2",
-    "Indian Express Opinion": "https://indianexpress.com/section/opinion/feed/"
+    "PIB Power Ministry": "https://www.pib.gov.in/newsite/pmreleases.aspx?mincode=28&reg=3&lang=2"
 }
 
+# Power anchor words (must match at least one)
 POWER_KEYWORDS = [
-    "power", "electricity", "discom", "grid",
-    "transmission", "renewable", "thermal",
-    "hydro", "solar", "wind", "energy"
+    "power", "electricity", "discom",
+    "grid", "transmission", "renewable",
+    "thermal", "hydro", "solar",
+    "wind", "load dispatch", "energy"
 ]
 
+# Governance triggers (optional but helpful)
 GOVERNANCE_KEYWORDS = [
     "tariff", "regulation", "consultation",
     "amendment", "order", "draft",
-    "policy", "reform", "approval",
-    "erc", "cerc", "serc", "mnre", "mop", "cea"
+    "policy", "reform", "approval"
 ]
 
+# Remove corporate / financial noise
 EXCLUDE_KEYWORDS = [
     "profit", "earnings", "shares",
-    "stock", "ipo", "quarter"
+    "stock", "ipo", "quarter", "revenue"
 ]
 
-CENTRAL_AUTHORITIES = [
-    "CERC", "Central Electricity Regulatory Commission",
-    "MoP", "Ministry of Power",
-    "MNRE", "CEA", "SECI",
-    "Grid India", "NLDC"
+CENTRAL_SIGNALS = [
+    "cerc", "ministry of power", "mop",
+    "mnre", "cea", "grid india",
+    "nldc", "centre", "central government",
+    "union government", "national electricity"
 ]
 
-STATES = [
-    "Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka",
-    "Rajasthan", "Uttar Pradesh", "Bihar", "Delhi",
-    "Punjab", "Haryana", "Odisha", "Madhya Pradesh",
-    "Andhra Pradesh", "Telangana"
+STATE_KEYWORDS = [
+    "maharashtra", "gujarat", "tamil nadu",
+    "karnataka", "rajasthan", "uttar pradesh",
+    "bihar", "delhi", "punjab", "haryana",
+    "odisha", "madhya pradesh",
+    "andhra pradesh", "telangana",
+
+    # State ERC short forms
+    "merc", "gerc", "tnerc", "kerc",
+    "uperc", "rerc", "derc", "oerc", "pserc",
+
+    # Major discoms
+    "bescom", "tangedco", "msedcl",
+    "uppcl", "tpddl", "brpl"
 ]
 
 
@@ -57,28 +68,24 @@ def is_relevant(title):
     if not any(p in t for p in POWER_KEYWORDS):
         return False
 
-    if not any(g in t for g in GOVERNANCE_KEYWORDS):
-        return False
-
     return True
 
 
 def classify_level(title):
-    for authority in CENTRAL_AUTHORITIES:
-        if authority.lower() in title.lower():
-            return "Central"
+    t = title.lower()
 
-    for state in STATES:
-        if state.lower() in title.lower():
-            return "State"
+    # Central first
+    if any(sig in t for sig in CENTRAL_SIGNALS):
+        return "Central"
 
-    if "serc" in title.lower() or "erc" in title.lower():
+    # State
+    if any(state in t for state in STATE_KEYWORDS):
         return "State"
 
     return None
 
 
-def scrape_rss(source_name, url):
+def parse_rss(source_name, url):
     items = []
 
     try:
@@ -108,7 +115,6 @@ def scrape_rss(source_name, url):
                 "date": date,
                 "publication": source_name,
                 "title": title,
-                "level": level,
                 "link": link
             })
 
@@ -124,15 +130,17 @@ def main():
     state_items = []
 
     for source_name, url in RSS_FEEDS.items():
-        articles = scrape_rss(source_name, url)
+        articles = parse_rss(source_name, url)
 
         for article in articles:
-            if article["level"] == "Central":
+            level = classify_level(article["title"])
+
+            if level == "Central":
                 central_items.append(article)
-            elif article["level"] == "State":
+            elif level == "State":
                 state_items.append(article)
 
-    # Deduplicate by link
+    # Deduplicate
     central_unique = {item["link"]: item for item in central_items}
     state_unique = {item["link"]: item for item in state_items}
 

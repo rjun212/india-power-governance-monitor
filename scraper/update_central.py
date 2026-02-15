@@ -171,7 +171,6 @@ def deduplicate(existing, new):
 
 def main():
     new_items = []
-    new_items += scrape_cerc()
     new_items += scrape_mop()
     new_items += scrape_mnre()
 

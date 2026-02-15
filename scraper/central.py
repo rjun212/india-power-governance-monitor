@@ -14,32 +14,41 @@ RSS_FEEDS = {
     "PIB Power Ministry": "https://www.pib.gov.in/newsite/pmreleases.aspx?mincode=28&reg=3&lang=2"
 }
 
-# Power anchor words (must match at least one)
 POWER_KEYWORDS = [
     "power", "electricity", "discom",
     "grid", "transmission", "renewable",
     "thermal", "hydro", "solar",
-    "wind", "load dispatch", "energy"
+    "wind", "energy"
 ]
 
-# Governance triggers (optional but helpful)
-GOVERNANCE_KEYWORDS = [
-    "tariff", "regulation", "consultation",
-    "amendment", "order", "draft",
-    "policy", "reform", "approval"
-]
-
-# Remove corporate / financial noise
 EXCLUDE_KEYWORDS = [
     "profit", "earnings", "shares",
     "stock", "ipo", "quarter", "revenue"
 ]
 
-CENTRAL_SIGNALS = [
-    "cerc", "ministry of power", "mop",
-    "mnre", "cea", "grid india",
-    "nldc", "centre", "central government",
-    "union government", "national electricity"
+# Strong central authority signals
+CENTRAL_STRONG = [
+    "cerc",
+    "ministry of power",
+    "mop",
+    "mnre",
+    "cea",
+    "grid india",
+    "nldc"
+]
+
+# Central policy signals (implicit)
+CENTRAL_POLICY = [
+    "national electricity",
+    "national tariff",
+    "national policy",
+    "electricity market",
+    "market coupling",
+    "central government",
+    "union government",
+    "power ministry",
+    "electricity rules",
+    "all india"
 ]
 
 STATE_KEYWORDS = [
@@ -49,11 +58,11 @@ STATE_KEYWORDS = [
     "odisha", "madhya pradesh",
     "andhra pradesh", "telangana",
 
-    # State ERC short forms
+    # ERC abbreviations
     "merc", "gerc", "tnerc", "kerc",
     "uperc", "rerc", "derc", "oerc", "pserc",
 
-    # Major discoms
+    # Discom names
     "bescom", "tangedco", "msedcl",
     "uppcl", "tpddl", "brpl"
 ]
@@ -74,11 +83,15 @@ def is_relevant(title):
 def classify_level(title):
     t = title.lower()
 
-    # Central first
-    if any(sig in t for sig in CENTRAL_SIGNALS):
+    # Strong central match
+    if any(sig in t for sig in CENTRAL_STRONG):
         return "Central"
 
-    # State
+    # Central policy-level signals
+    if any(sig in t for sig in CENTRAL_POLICY):
+        return "Central"
+
+    # State detection
     if any(state in t for state in STATE_KEYWORDS):
         return "State"
 
@@ -140,7 +153,7 @@ def main():
             elif level == "State":
                 state_items.append(article)
 
-    # Deduplicate
+    # Deduplicate by link
     central_unique = {item["link"]: item for item in central_items}
     state_unique = {item["link"]: item for item in state_items}
 

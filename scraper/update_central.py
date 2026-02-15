@@ -73,17 +73,28 @@ def scrape_mop():
         response = requests.get(URL, headers=HEADERS, timeout=15)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        notices = soup.find_all("div", class_="views-row")
+        # Find the announcement block
+        announcement_block = soup.find("div", class_="view-announcement")
+
+        if not announcement_block:
+            return []
+
+        notices = announcement_block.find_all("div", class_="views-row")
 
         for notice in notices:
-            date_div = notice.find("div", class_="views-field-field-date")
-            title_link = notice.find("a", href=True)
 
-            if not date_div or not title_link:
+            # Extract month + day (left column)
+            date_container = notice.find("div", class_="views-field-field-date")
+
+            if not date_container:
                 continue
 
-            # Extract date parts
-            date_text = date_div.get_text(strip=True)
+            date_text = date_container.get_text(strip=True)
+
+            # Extract title link
+            title_link = notice.find("a", href=True)
+            if not title_link:
+                continue
 
             title = title_link.get_text(strip=True)
             link = title_link["href"]
@@ -105,6 +116,7 @@ def scrape_mop():
     except Exception as e:
         print("MoP error:", e)
         return []
+
 
 
 

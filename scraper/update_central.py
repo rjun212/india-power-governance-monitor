@@ -3,31 +3,51 @@ from bs4 import BeautifulSoup
 import json
 from datetime import datetime
 
-# Example source (we will improve later)
 URL = "https://cercind.gov.in/orders.html"
 
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+}
+
 def scrape_cerc():
-    response = requests.get(URL)
-    soup = BeautifulSoup(response.text, "html.parser")
+    try:
+        response = requests.get(
+            URL,
+            headers=headers,
+            timeout=15,
+            verify=False
+        )
 
-    items = []
+        soup = BeautifulSoup(response.text, "html.parser")
 
-    links = soup.find_all("a")
+        items = []
 
-    for link in links:
-        text = link.get_text(strip=True)
+        links = soup.find_all("a")
 
-        if "Regulation" in text or "Order" in text or "Consultation" in text:
-            items.append({
-                "date": datetime.today().strftime("%Y-%m-%d"),
-                "authority": "CERC",
-                "category": "Order",
-                "doc_type": "Final",
-                "title": text,
-                "link": link.get("href")
-            })
+        for link in links:
+            text = link.get_text(strip=True)
 
-    return items[:5]  # limit initial output
+            if text and any(keyword in text for keyword in ["Order", "Regulation", "Consultation"]):
+                href = link.get("href")
+
+                if href:
+                    if not href.startswith("http"):
+                        href = "https://cercind.gov.in/" + href
+
+                    items.append({
+                        "date": datetime.today().strftime("%Y-%m-%d"),
+                        "authority": "CERC",
+                        "category": "Order",
+                        "doc_type": "Final",
+                        "title": text,
+                        "link": href
+                    })
+
+        return items[:5]
+
+    except Exception as e:
+        print("Error scraping CERC:", e)
+        return []
 
 
 def main():

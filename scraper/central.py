@@ -19,25 +19,10 @@ RSS_FEEDS = {
 }
 
 POWER_KEYWORDS = [
-    "power", "electricity", "discom",
-    "grid", "transmission", "renewable",
-    "thermal", "hydro", "solar",
-    "wind", "battery", "storage",
-    "energy"
-]
-
-EXCLUDE_KEYWORDS = [
-    "profit", "earnings", "shares",
-    "stock", "ipo", "quarter",
-    "revenue", "ugc", "election",
-    "caste", "rbi"
-]
-
-CENTRAL_SIGNALS = [
-    "cerc", "ministry of power", "mop",
-    "mnre", "cea", "grid india",
-    "centre", "central government",
-    "national electricity"
+    "power", "electricity", "discom", "grid",
+    "transmission", "renewable", "solar",
+    "wind", "hydro", "thermal", "battery",
+    "storage", "energy"
 ]
 
 STATE_KEYWORDS = [
@@ -45,12 +30,15 @@ STATE_KEYWORDS = [
     "karnataka", "rajasthan", "uttar pradesh",
     "bihar", "delhi", "punjab", "haryana",
     "odisha", "madhya pradesh",
-    "andhra pradesh", "telangana",
     "merc", "gerc", "tnerc", "kerc",
-    "uperc", "rerc", "derc", "oerc",
-    "bescom", "tangedco", "msedcl",
-    "uppcl", "tpddl", "brpl",
-    "budget"
+    "uperc", "rerc", "derc"
+]
+
+CENTRAL_KEYWORDS = [
+    "cerc", "ministry of power", "mop",
+    "mnre", "cea", "grid india",
+    "centre", "central government",
+    "national electricity"
 ]
 
 GLOBAL_KEYWORDS = [
@@ -62,50 +50,45 @@ NON_INDIA_MARKERS = [
     "us", "usa", "united states",
     "europe", "germany", "france",
     "china", "japan", "africa",
-    "argentina", "australia"
+    "australia", "canada"
 ]
 
-INDIA_MARKERS = [
-    "india", "indian", "₹", " crore"
-] + STATE_KEYWORDS
+EXCLUDE_KEYWORDS = [
+    "profit", "earnings", "shares",
+    "stock", "ipo", "quarter",
+    "revenue"
+]
 
 
-def is_relevant(title):
+def is_power_related(title):
     t = title.lower()
-
     if any(ex in t for ex in EXCLUDE_KEYWORDS):
         return False
-
-    if not any(p in t for p in POWER_KEYWORDS):
-        return False
-
-    return True
+    return any(p in t for p in POWER_KEYWORDS)
 
 
-def classify_level(title):
+def classify(title):
     t = title.lower()
 
-    # Central
-    if any(sig in t for sig in CENTRAL_SIGNALS):
+    if any(c in t for c in CENTRAL_KEYWORDS):
         return "Central"
 
-    # State (simple state detection)
-    if any(state in t for state in STATE_KEYWORDS):
+    if any(s in t for s in STATE_KEYWORDS):
         return "State"
 
     return None
 
 
 def is_global(title):
-    t = f" {title.lower()} "
+    t = title.lower()
 
     if not any(g in t for g in GLOBAL_KEYWORDS):
         return False
 
-    if not any(g in t for g in NON_INDIA_MARKERS):
+    if not any(n in t for n in NON_INDIA_MARKERS):
         return False
 
-    if any(ind in t for ind in INDIA_MARKERS):
+    if "india" in t:
         return False
 
     return True
@@ -113,17 +96,14 @@ def is_global(title):
 
 def is_report(title):
     t = title.lower()
-    return "report" in t and any(p in t for p in POWER_KEYWORDS)
+    return "report" in t or "outlook" in t
 
 
 def parse_date(entry):
-    if hasattr(entry, "published"):
-        return entry.published
+    if hasattr(entry, "published_parsed") and entry.published_parsed:
+        dt = datetime(*entry.published_parsed[:6])
+        return dt.strftime("%Y-%m-%d")
     return datetime.today().strftime("%Y-%m-%d")
-
-
-def dedupe(items):
-    return {item["link"]: item for item in items}.values()
 
 
 def main():
@@ -140,17 +120,17 @@ def main():
             link = entry.link
             date = parse_date(entry)
 
-            if not is_relevant(title):
+            if not is_power_related(title):
                 continue
 
             item = {
-                "date": date,
-                "publication": source_name,
                 "title": title,
+                "date": date,
                 "link": link
             }
 
-            level = classify_level(title)
+            level = classify(title)
+
             if level == "Central":
                 central_items.append(item)
             elif level == "State":
@@ -162,10 +142,18 @@ def main():
             if is_report(title):
                 report_items.append(item)
 
-    central_items = sorted(dedupe(central_items), key=lambda x: x["date"], reverse=True)
-    state_items = sorted(dedupe(state_items), key=lambda x: x["date"], reverse=True)
-    global_items = sorted(dedupe(global_items), key=lambda x: x["date"], reverse=True)
-    report_items = sorted(dedupe(report_items), key=lambda x: x["date"], reverse=True)
+    # Deduplicate + Sort
+    central_items = sorted({i["link"]: i for i in central_items}.values(),
+                           key=lambda x: x["date"], reverse=True)
+
+    state_items = sorted({i["link"]: i for i in state_items}.values(),
+                         key=lambda x: x["date"], reverse=True)
+
+    global_items = sorted({i["link"]: i for i in global_items}.values(),
+                          key=lambda x: x["date"], reverse=True)
+
+    report_items = sorted({i["link"]: i for i in report_items}.values(),
+                          key=lambda x: x["date"], reverse=True)
 
     os.makedirs("data", exist_ok=True)
 
@@ -181,7 +169,7 @@ def main():
     with open(REPORT_FILE, "w") as f:
         json.dump(list(report_items), f, indent=2)
 
-    print("Feeds updated.")
+    print("Feeds updated successfully.")
 
 
 if __name__ == "__main__":

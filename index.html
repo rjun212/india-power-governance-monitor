@@ -1,16 +1,151 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>India Power Governance Monitor</title>
-</head>
-<body>
-  <h1>India Power Governance Monitor</h1>
+  <title>India Power Sector Regulatory Monitor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
 
-  <ul>
-    <li><a href="central.html">Central Authorities</a></li>
-    <li><a href="states.html">State Authorities</a></li>
-    <li><a href="media.html">Media Digest</a></li>
-  </ul>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    select {
+      padding: 6px;
+      margin-right: 10px;
+      margin-bottom: 15px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>India Power Sector Regulatory Intelligence</h1>
+
+  <label><strong>Filter by Publication:</strong></label>
+  <select id="publicationFilter">
+    <option value="All">All</option>
+  </select>
+
+  <label><strong>Filter by Authority:</strong></label>
+  <select id="authorityFilter">
+    <option value="All">All</option>
+  </select>
+
+  <label><strong>Filter by Topic:</strong></label>
+  <select id="topicFilter">
+    <option value="All">All</option>
+  </select>
+
+  <br><br>
+
+  <table id="media-table">
+    <tr>
+      <th>Date</th>
+      <th>Publication</th>
+      <th>Title</th>
+      <th>Authority</th>
+      <th>Topic</th>
+      <th>Link</th>
+    </tr>
+  </table>
+
+  <script>
+    fetch("data/media.json")
+      .then(response => response.json())
+      .then(data => {
+
+        const table = document.getElementById("media-table");
+        const pubFilter = document.getElementById("publicationFilter");
+        const authFilter = document.getElementById("authorityFilter");
+        const topicFilter = document.getElementById("topicFilter");
+
+        const publications = [...new Set(data.map(item => item.publication))];
+        const authorities = [...new Set(data.map(item => item.authority_referenced).filter(Boolean))];
+        const topics = [...new Set(data.map(item => item.topic))];
+
+        publications.forEach(p => {
+          const opt = document.createElement("option");
+          opt.value = p;
+          opt.text = p;
+          pubFilter.appendChild(opt);
+        });
+
+        authorities.forEach(a => {
+          const opt = document.createElement("option");
+          opt.value = a;
+          opt.text = a;
+          authFilter.appendChild(opt);
+        });
+
+        topics.forEach(t => {
+          const opt = document.createElement("option");
+          opt.value = t;
+          opt.text = t;
+          topicFilter.appendChild(opt);
+        });
+
+        function render(pub, auth, topic) {
+          while (table.rows.length > 1) {
+            table.deleteRow(1);
+          }
+
+          data.forEach(item => {
+            if (
+              (pub === "All" || item.publication === pub) &&
+              (auth === "All" || item.authority_referenced === auth) &&
+              (topic === "All" || item.topic === topic)
+            ) {
+              const row = table.insertRow();
+
+              row.insertCell(0).innerText = item.date;
+              row.insertCell(1).innerText = item.publication;
+              row.insertCell(2).innerText = item.title;
+              row.insertCell(3).innerText = item.authority_referenced || "-";
+              row.insertCell(4).innerText = item.topic;
+
+              const linkCell = row.insertCell(5);
+              const link = document.createElement("a");
+              link.href = item.link;
+              link.target = "_blank";
+              link.innerText = "View";
+              linkCell.appendChild(link);
+            }
+          });
+        }
+
+        pubFilter.addEventListener("change", () => {
+          render(pubFilter.value, authFilter.value, topicFilter.value);
+        });
+
+        authFilter.addEventListener("change", () => {
+          render(pubFilter.value, authFilter.value, topicFilter.value);
+        });
+
+        topicFilter.addEventListener("change", () => {
+          render(pubFilter.value, authFilter.value, topicFilter.value);
+        });
+
+        render("All", "All", "All");
+      });
+  </script>
 
 </body>
 </html>

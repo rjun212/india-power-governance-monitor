@@ -15,42 +15,45 @@ RSS_FEEDS = {
     "PIB Power Ministry": "https://www.pib.gov.in/newsite/pmreleases.aspx?mincode=28&reg=3&lang=2",
     "Business Standard Power": "https://www.business-standard.com/rss/topic/power-sector",
     "Indian Express Opinion": "https://indianexpress.com/section/opinion/feed/",
-    "Reuters Energy": "https://www.reuters.com/business/energy/rss",
-    "IEA News": "https://www.iea.org/rss/news.xml",
-    "IRENA News": "https://www.irena.org/rss",
-    "Canary Media": "https://www.canarymedia.com/rss",
-    "Bloomberg Green": "https://feeds.bloomberg.com/green/news.rss"
+    "Reuters Energy": "https://www.reuters.com/business/energy/rss"
 }
+
+# --- FILTER DEFINITIONS ---
 
 POWER_KEYWORDS = [
     "power", "electricity", "discom",
     "grid", "transmission", "renewable",
     "thermal", "hydro", "solar",
-    "wind", "energy"
+    "wind", "battery", "storage",
+    "energy"
 ]
 
-GLOBAL_KEYWORDS = [
-    "renewable", "solar", "wind",
-    "battery", "storage", "hydrogen",
-    "grid", "transition", "clean energy"
+GOVERNANCE_KEYWORDS = [
+    "tariff", "regulation", "consultation",
+    "amendment", "order", "draft",
+    "policy", "reform", "approval",
+    "rules"
 ]
 
 REPORT_KEYWORDS = [
     "report", "outlook", "analysis",
-    "white paper", "study", "assessment",
-    "roadmap"
+    "study", "roadmap", "white paper",
+    "assessment"
 ]
 
 EXCLUDE_KEYWORDS = [
     "profit", "earnings", "shares",
-    "stock", "ipo", "quarter", "revenue"
+    "stock", "ipo", "quarter",
+    "revenue", "ugc", "election",
+    "caste", "rbi"
 ]
 
 CENTRAL_SIGNALS = [
     "cerc", "ministry of power", "mop",
     "mnre", "cea", "grid india",
     "nldc", "centre", "central government",
-    "national electricity"
+    "union government", "national electricity",
+    "electricity market"
 ]
 
 STATE_KEYWORDS = [
@@ -58,15 +61,32 @@ STATE_KEYWORDS = [
     "karnataka", "rajasthan", "uttar pradesh",
     "bihar", "delhi", "punjab", "haryana",
     "odisha", "madhya pradesh",
+    "andhra pradesh", "telangana",
+
     "merc", "gerc", "tnerc", "kerc",
-    "uperc", "rerc", "derc", "oerc"
+    "uperc", "rerc", "derc", "oerc",
+    "bescom", "tangedco", "msedcl",
+    "uppcl", "tpddl", "brpl"
 ]
 
 
-def clean_filter(title):
+# --- FILTER LOGIC ---
+
+def is_relevant(title):
     t = title.lower()
 
     if any(ex in t for ex in EXCLUDE_KEYWORDS):
+        return False
+
+    if not any(p in t for p in POWER_KEYWORDS):
+        return False
+
+    if not (
+        any(g in t for g in GOVERNANCE_KEYWORDS)
+        or any(c in t for c in CENTRAL_SIGNALS)
+        or any(s in t for s in STATE_KEYWORDS)
+        or any(r in t for r in REPORT_KEYWORDS)
+    ):
         return False
 
     return True
@@ -86,13 +106,15 @@ def classify_level(title):
 
 def is_global(title):
     t = title.lower()
-    return any(g in t for g in GLOBAL_KEYWORDS)
+    return any(k in t for k in ["renewable", "battery", "storage", "hydrogen", "energy transition"])
 
 
 def is_report(title):
     t = title.lower()
     return any(r in t for r in REPORT_KEYWORDS)
 
+
+# --- MAIN ---
 
 def main():
     central_items = []
@@ -108,7 +130,7 @@ def main():
             link = entry.link
             date = entry.get("published", datetime.today().strftime("%Y-%m-%d"))
 
-            if not clean_filter(title):
+            if not is_relevant(title):
                 continue
 
             item = {
@@ -118,18 +140,15 @@ def main():
                 "link": link
             }
 
-            # Central / State classification
             level = classify_level(title)
             if level == "Central":
                 central_items.append(item)
             elif level == "State":
                 state_items.append(item)
 
-            # Global renewables
             if is_global(title):
                 global_items.append(item)
 
-            # Reports
             if is_report(title):
                 report_items.append(item)
 

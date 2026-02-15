@@ -1,41 +1,28 @@
 import requests
-from bs4 import BeautifulSoup
+import xml.etree.ElementTree as ET
 import json
 from datetime import datetime
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
-
 MEDIA_FILE = "data/media.json"
 
-AUTHORITIES = [
-    "CERC",
-    "Central Electricity Regulatory Commission",
-    "SERC",
-    "Electricity Regulatory Commission",
-    "MoP",
-    "Ministry of Power",
-    "MNRE",
-    "CEA",
-    "SECI",
-    "Grid India",
-    "NLDC",
-    "SLDC",
-    "DISCOM"
-]
+RSS_FEEDS = {
+    "The Hindu - News": "https://www.thehindu.com/news/feeder/default.rss",
+    "The Hindu - Business": "https://www.thehindu.com/business/feeder/default.rss",
+    "ET EnergyWorld": "https://energy.economictimes.indiatimes.com/rss",
+    "Moneycontrol": "https://www.moneycontrol.com/rss/latestnews.xml",
+    "5paisa": "https://www.5paisa.com/rss/blog.xml",
+    "Financial Times": "https://www.ft.com/world?format=rss",
+    "Google Alerts 1": "https://www.google.co.in/alerts/feeds/08796847820147744949/6654652138658512807",
+    "Google Alerts 2": "https://www.google.co.in/alerts/feeds/08796847820147744949/11350576126718779464",
+    "Bloomberg Quint": "https://prod-qt-images.s3.amazonaws.com/production/bloombergquint/feed.xml",
+    "Times of India": "https://timesofindia.indiatimes.com/rssfeedstopstories.cms"
+}
 
-TOPICS = [
-    "Tariff",
-    "Regulation",
-    "Consultation",
-    "DSM",
-    "Transmission",
-    "Storage",
-    "Procurement",
-    "Draft",
-    "Amendment",
-    "Notification",
-    "Policy",
-    "Power"
+KEYWORDS = [
+    "CERC", "SERC", "MoP", "MNRE", "CEA", "SECI",
+    "Tariff", "Regulation", "Consultation", "DSM",
+    "Discom", "Electricity", "Power", "Transmission",
+    "Grid", "Procurement", "Amendment", "Policy"
 ]
 
 STATES = [
@@ -46,24 +33,6 @@ STATES = [
 ]
 
 
-# -------------------------
-# Classification Helpers
-# -------------------------
-
-def detect_authority(title):
-    for authority in AUTHORITIES:
-        if authority.lower() in title.lower():
-            return authority
-    return ""
-
-
-def detect_topic(title):
-    for topic in TOPICS:
-        if topic.lower() in title.lower():
-            return topic
-    return "General"
-
-
 def detect_state(title):
     for state in STATES:
         if state.lower() in title.lower():
@@ -71,157 +40,50 @@ def detect_state(title):
     return ""
 
 
-def build_item(publication, title, href):
-    return {
-        "date": datetime.today().strftime("%Y-%m-%d"),
-        "publication": publication,
-        "title": title,
-        "authority_referenced": detect_authority(title),
-        "topic": detect_topic(title),
-        "state": detect_state(title),
-        "link": href
-    }
+def detect_authority(title):
+    for keyword in KEYWORDS:
+        if keyword.lower() in title.lower():
+            return keyword
+    return ""
 
 
-# -------------------------
-# ET EnergyWorld
-# -------------------------
-
-def scrape_et():
-    URL = "https://energy.economictimes.indiatimes.com/news/power"
+def scrape_rss(source_name, url):
     items = []
 
     try:
-        response = requests.get(URL, headers=HEADERS, timeout=15)
-        soup = BeautifulSoup(response.text, "html.parser")
+        response = requests.get(url, timeout=15)
+        root = ET.fromstring(response.content)
 
-        for a in soup.find_all("a", href=True):
-            title = a.get_text(" ", strip=True)
-            href = a["href"]
+        for item in root.findall(".//item"):
+            title = item.find("title").text if item.find("title") is not None else ""
+            link = item.find("link").text if item.find("link") is not None else ""
 
-            if not title or len(title) < 25:
+            if not title or not link:
                 continue
 
-            if "/news/" not in href:
-                continue
+            if any(keyword.lower() in title.lower() for keyword in KEYWORDS):
+                items.append({
+                    "date": datetime.today().strftime("%Y-%m-%d"),
+                    "publication": source_name,
+                    "title": title.strip(),
+                    "authority_referenced": detect_authority(title),
+                    "topic": "Regulatory",
+                    "state": detect_state(title),
+                    "link": link.strip()
+                })
 
-            if not href.startswith("http"):
-                href = "https://energy.economictimes.indiatimes.com" + href
-
-            if any(k.lower() in title.lower() for k in AUTHORITIES + TOPICS):
-                items.append(build_item("ET EnergyWorld", title, href))
+        return items
 
     except Exception as e:
-        print("ET error:", e)
+        print(f"RSS error from {source_name}:", e)
+        return []
 
-    return items
-
-
-# -------------------------
-# Reuters India
-# -------------------------
-
-def scrape_reuters():
-    URL = "https://www.reuters.com/world/india/"
-    items = []
-
-    try:
-        response = requests.get(URL, headers=HEADERS, timeout=15)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        for a in soup.find_all("a", href=True):
-            title = a.get_text(" ", strip=True)
-            href = a["href"]
-
-            if not title or len(title) < 25:
-                continue
-
-            if not href.startswith("http"):
-                href = "https://www.reuters.com" + href
-
-            if any(k.lower() in title.lower() for k in AUTHORITIES + TOPICS):
-                items.append(build_item("Reuters", title, href))
-
-    except Exception as e:
-        print("Reuters error:", e)
-
-    return items
-
-
-# -------------------------
-# Business Standard
-# -------------------------
-
-def scrape_bs():
-    URL = "https://www.business-standard.com/topic/power-sector"
-    items = []
-
-    try:
-        response = requests.get(URL, headers=HEADERS, timeout=15)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        for a in soup.find_all("a", href=True):
-            title = a.get_text(" ", strip=True)
-            href = a["href"]
-
-            if not title or len(title) < 25:
-                continue
-
-            if not href.startswith("http"):
-                href = "https://www.business-standard.com" + href
-
-            if any(k.lower() in title.lower() for k in AUTHORITIES + TOPICS):
-                items.append(build_item("Business Standard", title, href))
-
-    except Exception as e:
-        print("Business Standard error:", e)
-
-    return items
-
-
-# -------------------------
-# PIB (Ministry of Power)
-# -------------------------
-
-def scrape_pib():
-    URL = "https://pib.gov.in/PressReleasePage.aspx?MinCode=31"
-    items = []
-
-    try:
-        response = requests.get(URL, headers=HEADERS, timeout=15)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        for a in soup.find_all("a", href=True):
-            title = a.get_text(" ", strip=True)
-            href = a["href"]
-
-            if not title or len(title) < 25:
-                continue
-
-            if any(k.lower() in title.lower() for k in AUTHORITIES + TOPICS):
-
-                if not href.startswith("http"):
-                    href = "https://pib.gov.in/" + href
-
-                items.append(build_item("PIB", title, href))
-
-    except Exception as e:
-        print("PIB error:", e)
-
-    return items
-
-
-# -------------------------
-# Main Execution
-# -------------------------
 
 def main():
     all_items = []
 
-    all_items += scrape_et()
-    all_items += scrape_reuters()
-    all_items += scrape_bs()
-    all_items += scrape_pib()
+    for source_name, url in RSS_FEEDS.items():
+        all_items += scrape_rss(source_name, url)
 
     # Deduplicate by link
     unique = {}
@@ -233,7 +95,7 @@ def main():
     with open(MEDIA_FILE, "w") as f:
         json.dump(final_items, f, indent=2)
 
-    print("Media multi-source update complete.")
+    print("RSS-based media intelligence updated.")
 
 
 if __name__ == "__main__":

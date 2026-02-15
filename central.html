@@ -1,12 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Central Authorities - India Power Governance Monitor</title>
-</head>
 <body>
   <h1>Central Authorities</h1>
 
-  <table border="1">
+  <table border="1" id="data-table">
     <tr>
       <th>Date</th>
       <th>Authority</th>
@@ -17,7 +12,30 @@
     </tr>
   </table>
 
+  <script>
+    fetch("data/central.json")
+      .then(response => response.json())
+      .then(data => {
+        const table = document.getElementById("data-table");
+
+        data.forEach(item => {
+          const row = table.insertRow();
+
+          row.insertCell(0).innerText = item.date;
+          row.insertCell(1).innerText = item.authority;
+          row.insertCell(2).innerText = item.category;
+          row.insertCell(3).innerText = item.doc_type;
+          row.insertCell(4).innerText = item.title;
+
+          const linkCell = row.insertCell(5);
+          const link = document.createElement("a");
+          link.href = item.link;
+          link.innerText = "View";
+          linkCell.appendChild(link);
+        });
+      });
+  </script>
+
   <br>
   <a href="index.html">Back to Home</a>
 </body>
-</html>

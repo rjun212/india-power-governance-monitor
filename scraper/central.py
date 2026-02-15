@@ -7,10 +7,12 @@ STATE_FILE = "data/state.json"
 
 RSS_FEEDS = {
     "ET Power": "https://energy.economictimes.indiatimes.com/rss/power",
-    "ET Top Stories": "https://energy.economictimes.indiatimes.com/rss/topstories",
+    "ET Renewable": "https://energy.economictimes.indiatimes.com/rss/Renewable",
     "Mercom India": "https://www.mercomindia.com/feed",
     "PowerLine": "https://powerline.net.in/feed/",
-    "PIB Power Ministry": "https://www.pib.gov.in/newsite/pmreleases.aspx?mincode=28&reg=3&lang=2"
+    "PIB Power Ministry": "https://www.pib.gov.in/newsite/pmreleases.aspx?mincode=28&reg=3&lang=2",
+    "Business Standard Power": "https://www.business-standard.com/rss/topic/power-sector",
+    "Indian Express Opinion": "https://indianexpress.com/section/opinion/feed/"
 }
 
 POWER_KEYWORDS = [
@@ -20,16 +22,31 @@ POWER_KEYWORDS = [
     "wind", "energy"
 ]
 
+GOVERNANCE_KEYWORDS = [
+    "tariff", "regulation", "consultation",
+    "amendment", "order", "draft",
+    "policy", "reform", "approval"
+]
+
 EXCLUDE_KEYWORDS = [
     "profit", "earnings", "shares",
     "stock", "ipo", "quarter", "revenue"
 ]
 
 CENTRAL_SIGNALS = [
-    "cerc", "ministry of power", "mop",
-    "mnre", "cea", "grid india",
-    "nldc", "centre", "central government",
-    "union government", "national electricity"
+    "cerc",
+    "ministry of power",
+    "mop",
+    "mnre",
+    "cea",
+    "grid india",
+    "nldc",
+    "centre",
+    "central government",
+    "union government",
+    "national electricity",
+    "national tariff",
+    "electricity market"
 ]
 
 STATE_KEYWORDS = [
@@ -52,6 +69,9 @@ def is_relevant(title):
         return False
 
     if not any(p in t for p in POWER_KEYWORDS):
+        return False
+
+    if not any(g in t for g in GOVERNANCE_KEYWORDS):
         return False
 
     return True
@@ -79,6 +99,7 @@ def main():
         for entry in feed.entries:
             title = entry.title
             link = entry.link
+            date = entry.get("published", datetime.today().strftime("%Y-%m-%d"))
 
             if not is_relevant(title):
                 continue
@@ -88,7 +109,7 @@ def main():
                 continue
 
             item = {
-                "date": entry.get("published", datetime.today().strftime("%Y-%m-%d")),
+                "date": date,
                 "publication": source_name,
                 "title": title,
                 "link": link

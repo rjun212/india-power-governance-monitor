@@ -66,37 +66,46 @@ def scrape_cerc():
 
 
 def scrape_mop():
-    URL = "https://powermin.gov.in/en/press-release"
+    URL = "https://powermin.gov.in"
     items = []
 
     try:
         response = requests.get(URL, headers=HEADERS, timeout=15)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        links = soup.find_all("a")
+        notices = soup.find_all("div", class_="views-row")
 
-        for link in links:
-            text = link.get_text(strip=True)
-            href = link.get("href")
+        for notice in notices:
+            date_div = notice.find("div", class_="views-field-field-date")
+            title_link = notice.find("a", href=True)
 
-            if text and href and any(k in text for k in ["Notification", "Guideline", "Amendment"]):
+            if not date_div or not title_link:
+                continue
 
-                if not href.startswith("http"):
-                    href = "https://powermin.gov.in" + href
+            # Extract date parts
+            date_text = date_div.get_text(strip=True)
 
-                items.append({
-                    "date": datetime.today().strftime("%Y-%m-%d"),
-                    "authority": "MoP",
-                    "category": "Scheme Notification",
-                    "doc_type": "Final",
-                    "title": text,
-                    "link": href
-                })
+            title = title_link.get_text(strip=True)
+            link = title_link["href"]
+
+            if not link.startswith("http"):
+                link = "https://powermin.gov.in" + link
+
+            items.append({
+                "date": date_text,
+                "authority": "MoP",
+                "category": "Scheme Notification",
+                "doc_type": "Final",
+                "title": title,
+                "link": link
+            })
+
+        return items
 
     except Exception as e:
         print("MoP error:", e)
+        return []
 
-    return items
 
 
 def scrape_mnre():

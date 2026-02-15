@@ -1,11 +1,9 @@
 name: Update Power Governance Feeds
 
 on:
-  on:
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
-
 
 jobs:
   scrape:
@@ -34,5 +32,5 @@ jobs:
           git config --local user.name "GitHub Action"
           git add data/central.json
           git add data/state.json
-          git commit -m "Auto update central and state feeds" || echo "No changes"
+          git commit -m "Auto update feeds" || echo "No changes"
           git push

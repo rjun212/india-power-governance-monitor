@@ -9,37 +9,60 @@ HEADERS = {
 }
 
 def scrape_cerc():
-    URL = "https://cercind.gov.in/orders.html"
+    base_url = "https://cercind.gov.in/"
+    main_url = base_url + "orders.html"
     items = []
 
     try:
-        response = requests.get(URL, headers=HEADERS, timeout=15, verify=False)
+        response = requests.get(main_url, headers=HEADERS, timeout=15, verify=False)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        links = soup.find_all("a")
+        # Find the first year link on the Orders page
+        year_anchor = soup.find("a", href=True)
+        if not year_anchor:
+            return []
 
-        for link in links:
-            text = link.get_text(strip=True)
-            href = link.get("href")
+        year_href = year_anchor["href"]
+        if not year_href.startswith("http"):
+            year_href = base_url + year_href.lstrip("/")
 
-            if text and href and any(k in text for k in ["Order", "Regulation", "Consultation"]):
+        # Open the year page
+        year_response = requests.get(year_href, headers=HEADERS, timeout=15, verify=False)
+        year_soup = BeautifulSoup(year_response.text, "html.parser")
 
-                if not href.startswith("http"):
-                    href = "https://cercind.gov.in/" + href
+        rows = year_soup.find_all("tr")
 
-                items.append({
-                    "date": datetime.today().strftime("%Y-%m-%d"),
-                    "authority": "CERC",
-                    "category": "Regulation Amendment" if "Regulation" in text else "Order",
-                    "doc_type": "Draft" if "Consultation" in text else "Final",
-                    "title": text,
-                    "link": href
-                })
+        for row in rows:
+            cols = row.find_all("td")
+            if len(cols) < 2:
+                continue
+
+            date_text = cols[0].get_text(strip=True)
+
+            link = cols[1].find("a", href=True)
+            if not link:
+                continue
+
+            title = link.get_text(strip=True)
+            href = link["href"]
+
+            if not href.startswith("http"):
+                href = base_url + href.lstrip("/")
+
+            items.append({
+                "date": date_text,
+                "authority": "CERC",
+                "category": "Order",
+                "doc_type": "Final",
+                "title": title,
+                "link": href
+            })
+
+        return items
 
     except Exception as e:
         print("CERC error:", e)
-
-    return items
+        return []
 
 
 def scrape_mop():

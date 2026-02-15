@@ -1,5 +1,4 @@
-import requests
-import xml.etree.ElementTree as ET
+import feedparser
 import json
 from datetime import datetime
 
@@ -26,29 +25,11 @@ EXCLUDE_KEYWORDS = [
     "stock", "ipo", "quarter", "revenue"
 ]
 
-# Strong central authority signals
-CENTRAL_STRONG = [
-    "cerc",
-    "ministry of power",
-    "mop",
-    "mnre",
-    "cea",
-    "grid india",
-    "nldc"
-]
-
-# Central policy signals (implicit)
-CENTRAL_POLICY = [
-    "national electricity",
-    "national tariff",
-    "national policy",
-    "electricity market",
-    "market coupling",
-    "central government",
-    "union government",
-    "power ministry",
-    "electricity rules",
-    "all india"
+CENTRAL_SIGNALS = [
+    "cerc", "ministry of power", "mop",
+    "mnre", "cea", "grid india",
+    "nldc", "centre", "central government",
+    "union government", "national electricity"
 ]
 
 STATE_KEYWORDS = [
@@ -57,12 +38,8 @@ STATE_KEYWORDS = [
     "bihar", "delhi", "punjab", "haryana",
     "odisha", "madhya pradesh",
     "andhra pradesh", "telangana",
-
-    # ERC abbreviations
     "merc", "gerc", "tnerc", "kerc",
     "uperc", "rerc", "derc", "oerc", "pserc",
-
-    # Discom names
     "bescom", "tangedco", "msedcl",
     "uppcl", "tpddl", "brpl"
 ]
@@ -83,39 +60,25 @@ def is_relevant(title):
 def classify_level(title):
     t = title.lower()
 
-    # Strong central match
-    if any(sig in t for sig in CENTRAL_STRONG):
+    if any(sig in t for sig in CENTRAL_SIGNALS):
         return "Central"
 
-    # Central policy-level signals
-    if any(sig in t for sig in CENTRAL_POLICY):
-        return "Central"
-
-    # State detection
     if any(state in t for state in STATE_KEYWORDS):
         return "State"
 
     return None
 
 
-def parse_rss(source_name, url):
-    items = []
+def main():
+    central_items = []
+    state_items = []
 
-    try:
-        response = requests.get(url, timeout=15)
-        root = ET.fromstring(response.content)
+    for source_name, url in RSS_FEEDS.items():
+        feed = feedparser.parse(url)
 
-        for item in root.findall(".//item"):
-            title_elem = item.find("title")
-            link_elem = item.find("link")
-            date_elem = item.find("pubDate")
-
-            if title_elem is None or link_elem is None:
-                continue
-
-            title = title_elem.text.strip()
-            link = link_elem.text.strip()
-            date = date_elem.text.strip() if date_elem is not None else datetime.today().strftime("%Y-%m-%d")
+        for entry in feed.entries:
+            title = entry.title
+            link = entry.link
 
             if not is_relevant(title):
                 continue
@@ -124,36 +87,19 @@ def parse_rss(source_name, url):
             if level is None:
                 continue
 
-            items.append({
-                "date": date,
+            item = {
+                "date": entry.get("published", datetime.today().strftime("%Y-%m-%d")),
                 "publication": source_name,
                 "title": title,
                 "link": link
-            })
-
-        return items
-
-    except Exception as e:
-        print(f"Error in {source_name}:", e)
-        return []
-
-
-def main():
-    central_items = []
-    state_items = []
-
-    for source_name, url in RSS_FEEDS.items():
-        articles = parse_rss(source_name, url)
-
-        for article in articles:
-            level = classify_level(article["title"])
+            }
 
             if level == "Central":
-                central_items.append(article)
+                central_items.append(item)
             elif level == "State":
-                state_items.append(article)
+                state_items.append(item)
 
-    # Deduplicate by link
+    # Deduplicate
     central_unique = {item["link"]: item for item in central_items}
     state_unique = {item["link"]: item for item in state_items}
 

@@ -18,29 +18,12 @@ RSS_FEEDS = {
     "Reuters Energy": "https://www.reuters.com/business/energy/rss"
 }
 
-# ----------------------------
-# Core Filters
-# ----------------------------
-
 POWER_KEYWORDS = [
     "power", "electricity", "discom",
     "grid", "transmission", "renewable",
     "thermal", "hydro", "solar",
     "wind", "battery", "storage",
     "energy"
-]
-
-GOVERNANCE_KEYWORDS = [
-    "tariff", "regulation", "consultation",
-    "amendment", "order", "draft",
-    "policy", "reform", "approval",
-    "rules"
-]
-
-REPORT_KEYWORDS = [
-    "report", "study", "analysis",
-    "outlook", "white paper",
-    "roadmap", "assessment"
 ]
 
 EXCLUDE_KEYWORDS = [
@@ -53,9 +36,8 @@ EXCLUDE_KEYWORDS = [
 CENTRAL_SIGNALS = [
     "cerc", "ministry of power", "mop",
     "mnre", "cea", "grid india",
-    "nldc", "centre", "central government",
-    "union government", "national electricity",
-    "electricity market"
+    "centre", "central government",
+    "national electricity"
 ]
 
 STATE_KEYWORDS = [
@@ -67,37 +49,26 @@ STATE_KEYWORDS = [
     "merc", "gerc", "tnerc", "kerc",
     "uperc", "rerc", "derc", "oerc",
     "bescom", "tangedco", "msedcl",
-    "uppcl", "tpddl", "brpl"
+    "uppcl", "tpddl", "brpl",
+    "budget"
 ]
 
 GLOBAL_KEYWORDS = [
     "renewable", "solar", "wind",
-    "battery", "storage", "hydrogen",
-    "energy transition"
+    "battery", "storage", "hydrogen"
 ]
 
 NON_INDIA_MARKERS = [
     "us", "usa", "united states",
-    "europe", "eu", "germany",
-    "france", "uk", "britain",
-    "china", "japan", "korea",
-    "australia", "canada",
-    "africa", "argentina",
-    "brazil", "mexico",
-    "middle east"
+    "europe", "germany", "france",
+    "china", "japan", "africa",
+    "argentina", "australia"
 ]
 
 INDIA_MARKERS = [
-    "india", "indian", "new delhi",
-    "₹", " rs ", " crore",
-    "mnre", "mop", "cerc", "cea",
-    "seci", "ntpc", "nhpc",
+    "india", "indian", "₹", " crore"
 ] + STATE_KEYWORDS
 
-
-# ----------------------------
-# Helper Functions
-# ----------------------------
 
 def is_relevant(title):
     t = title.lower()
@@ -118,9 +89,8 @@ def classify_level(title):
     if any(sig in t for sig in CENTRAL_SIGNALS):
         return "Central"
 
-    # State requires both state + governance trigger
-    if any(state in t for state in STATE_KEYWORDS) and \
-       any(g in t for g in GOVERNANCE_KEYWORDS):
+    # State (simple state detection)
+    if any(state in t for state in STATE_KEYWORDS):
         return "State"
 
     return None
@@ -129,7 +99,7 @@ def classify_level(title):
 def is_global(title):
     t = f" {title.lower()} "
 
-    if not any(k in t for k in GLOBAL_KEYWORDS):
+    if not any(g in t for g in GLOBAL_KEYWORDS):
         return False
 
     if not any(g in t for g in NON_INDIA_MARKERS):
@@ -143,14 +113,7 @@ def is_global(title):
 
 def is_report(title):
     t = title.lower()
-
-    if not any(r in t for r in REPORT_KEYWORDS):
-        return False
-
-    if not any(p in t for p in POWER_KEYWORDS):
-        return False
-
-    return True
+    return "report" in t and any(p in t for p in POWER_KEYWORDS)
 
 
 def parse_date(entry):
@@ -162,10 +125,6 @@ def parse_date(entry):
 def dedupe(items):
     return {item["link"]: item for item in items}.values()
 
-
-# ----------------------------
-# Main Engine
-# ----------------------------
 
 def main():
     central_items = []
@@ -222,7 +181,7 @@ def main():
     with open(REPORT_FILE, "w") as f:
         json.dump(list(report_items), f, indent=2)
 
-    print("Central / State / Global / Reports updated.")
+    print("Feeds updated.")
 
 
 if __name__ == "__main__":

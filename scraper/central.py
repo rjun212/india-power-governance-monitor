@@ -7,14 +7,48 @@ HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 MEDIA_FILE = "data/media.json"
 
-AUTHORITIES = ["CERC", "SERC", "MoP", "MNRE", "CEA", "SECI", "SLDC", "DISCOM"]
-TOPICS = ["Tariff", "Regulation", "Consultation", "DSM", "Transmission", "Storage", "Procurement"]
+AUTHORITIES = [
+    "CERC",
+    "Central Electricity Regulatory Commission",
+    "SERC",
+    "Electricity Regulatory Commission",
+    "MoP",
+    "Ministry of Power",
+    "MNRE",
+    "CEA",
+    "SECI",
+    "Grid India",
+    "NLDC",
+    "SLDC",
+    "DISCOM"
+]
+
+TOPICS = [
+    "Tariff",
+    "Regulation",
+    "Consultation",
+    "DSM",
+    "Transmission",
+    "Storage",
+    "Procurement",
+    "Draft",
+    "Amendment",
+    "Notification",
+    "Policy",
+    "Power"
+]
+
 STATES = [
     "Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka",
     "Rajasthan", "Uttar Pradesh", "Bihar", "Delhi",
-    "Punjab", "Haryana"
+    "Punjab", "Haryana", "Odisha", "Madhya Pradesh",
+    "Andhra Pradesh", "Telangana"
 ]
 
+
+# -------------------------
+# Classification Helpers
+# -------------------------
 
 def detect_authority(title):
     for authority in AUTHORITIES:
@@ -49,9 +83,9 @@ def build_item(publication, title, href):
     }
 
 
-# ------------------------------
+# -------------------------
 # ET EnergyWorld
-# ------------------------------
+# -------------------------
 
 def scrape_et():
     URL = "https://energy.economictimes.indiatimes.com/news/power"
@@ -68,7 +102,7 @@ def scrape_et():
             if not title or len(title) < 25:
                 continue
 
-            if "news" not in href:
+            if "/news/" not in href:
                 continue
 
             if not href.startswith("http"):
@@ -83,9 +117,9 @@ def scrape_et():
     return items
 
 
-# ------------------------------
+# -------------------------
 # Reuters India
-# ------------------------------
+# -------------------------
 
 def scrape_reuters():
     URL = "https://www.reuters.com/world/india/"
@@ -114,9 +148,9 @@ def scrape_reuters():
     return items
 
 
-# ------------------------------
+# -------------------------
 # Business Standard
-# ------------------------------
+# -------------------------
 
 def scrape_bs():
     URL = "https://www.business-standard.com/topic/power-sector"
@@ -145,15 +179,49 @@ def scrape_bs():
     return items
 
 
-# ------------------------------
-# MAIN
-# ------------------------------
+# -------------------------
+# PIB (Ministry of Power)
+# -------------------------
+
+def scrape_pib():
+    URL = "https://pib.gov.in/PressReleasePage.aspx?MinCode=31"
+    items = []
+
+    try:
+        response = requests.get(URL, headers=HEADERS, timeout=15)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        for a in soup.find_all("a", href=True):
+            title = a.get_text(" ", strip=True)
+            href = a["href"]
+
+            if not title or len(title) < 25:
+                continue
+
+            if any(k.lower() in title.lower() for k in AUTHORITIES + TOPICS):
+
+                if not href.startswith("http"):
+                    href = "https://pib.gov.in/" + href
+
+                items.append(build_item("PIB", title, href))
+
+    except Exception as e:
+        print("PIB error:", e)
+
+    return items
+
+
+# -------------------------
+# Main Execution
+# -------------------------
 
 def main():
     all_items = []
+
     all_items += scrape_et()
     all_items += scrape_reuters()
     all_items += scrape_bs()
+    all_items += scrape_pib()
 
     # Deduplicate by link
     unique = {}

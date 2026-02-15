@@ -1,9 +1,11 @@
 name: Update Power Governance Feeds
 
 on:
+  on:
   schedule:
-    - cron: "0 2 * * *"   # Runs daily at 02:00 UTC
+    - cron: "*/30 * * * *"
   workflow_dispatch:
+
 
 jobs:
   scrape:

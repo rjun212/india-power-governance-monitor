@@ -21,13 +21,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-     - name: Run scraper
-  run: python scraper/central.py
+      - name: Run scraper
+        run: python scraper/central.py
 
       - name: Commit updated data
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add data/central.json
-          git commit -m "Auto update central data" || echo "No changes"
+          git add data/media.json
+          git commit -m "Auto update central and media data" || echo "No changes"
           git push

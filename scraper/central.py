@@ -45,7 +45,7 @@ EXCLUDE_KEYWORDS = [
     "profit", "earnings", "shares",
     "stock", "ipo", "quarter",
     "revenue", "ugc", "election",
-    "caste", "rbi"
+    "caste", "rbi", "bangladesh"
 ]
 
 CENTRAL_SIGNALS = [
@@ -69,8 +69,13 @@ STATE_KEYWORDS = [
     "uppcl", "tpddl", "brpl"
 ]
 
+GLOBAL_KEYWORDS = [
+    "renewable", "solar", "wind",
+    "battery", "storage", "hydrogen",
+    "energy transition"
+]
 
-# --- FILTER LOGIC ---
+# --- CORE FILTERING ---
 
 def is_relevant(title):
     t = title.lower()
@@ -81,24 +86,19 @@ def is_relevant(title):
     if not any(p in t for p in POWER_KEYWORDS):
         return False
 
-    if not (
-        any(g in t for g in GOVERNANCE_KEYWORDS)
-        or any(c in t for c in CENTRAL_SIGNALS)
-        or any(s in t for s in STATE_KEYWORDS)
-        or any(r in t for r in REPORT_KEYWORDS)
-    ):
-        return False
-
     return True
 
 
 def classify_level(title):
     t = title.lower()
 
+    # Central
     if any(sig in t for sig in CENTRAL_SIGNALS):
         return "Central"
 
-    if any(state in t for state in STATE_KEYWORDS):
+    # State requires BOTH state keyword AND governance trigger
+    if any(state in t for state in STATE_KEYWORDS) and \
+       any(g in t for g in GOVERNANCE_KEYWORDS):
         return "State"
 
     return None
@@ -106,15 +106,33 @@ def classify_level(title):
 
 def is_global(title):
     t = title.lower()
-    return any(k in t for k in ["renewable", "battery", "storage", "hydrogen", "energy transition"])
+
+    if not any(g in t for g in GLOBAL_KEYWORDS):
+        return False
+
+    # Exclude Indian signals
+    if any(state in t for state in STATE_KEYWORDS):
+        return False
+
+    if any(sig in t for sig in CENTRAL_SIGNALS):
+        return False
+
+    return True
 
 
 def is_report(title):
     t = title.lower()
-    return any(r in t for r in REPORT_KEYWORDS)
+
+    if not any(r in t for r in REPORT_KEYWORDS):
+        return False
+
+    if not any(p in t for p in POWER_KEYWORDS):
+        return False
+
+    return True
 
 
-# --- MAIN ---
+# --- MAIN ENGINE ---
 
 def main():
     central_items = []

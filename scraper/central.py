@@ -6,45 +6,41 @@ from datetime import datetime
 MEDIA_FILE = "data/media.json"
 
 RSS_FEEDS = {
-    "The Hindu - News": "https://www.thehindu.com/news/feeder/default.rss",
-    "The Hindu - Business": "https://www.thehindu.com/business/feeder/default.rss",
-    "ET EnergyWorld": "https://energy.economictimes.indiatimes.com/rss",
-    "Moneycontrol": "https://www.moneycontrol.com/rss/latestnews.xml",
-    "5paisa": "https://www.5paisa.com/rss/blog.xml",
-    "Financial Times": "https://www.ft.com/world?format=rss",
-    "Google Alerts 1": "https://www.google.co.in/alerts/feeds/08796847820147744949/6654652138658512807",
-    "Google Alerts 2": "https://www.google.co.in/alerts/feeds/08796847820147744949/11350576126718779464",
-    "Bloomberg Quint": "https://prod-qt-images.s3.amazonaws.com/production/bloombergquint/feed.xml",
-    "Times of India": "https://timesofindia.indiatimes.com/rssfeedstopstories.cms"
+    "ET Power": "https://energy.economictimes.indiatimes.com/rss/power",
+    "ET Top Stories": "https://energy.economictimes.indiatimes.com/rss/topstories",
+    "ET Recent": "https://energy.economictimes.indiatimes.com/rss/recentstories",
+    "Mercom India": "https://www.mercomindia.com/feed",
+    "PowerLine": "https://powerline.net.in/feed/",
+    "PIB Power Ministry": "https://www.pib.gov.in/newsite/pmreleases.aspx?mincode=28&reg=3&lang=2",
+    "Indian Express Opinion": "https://indianexpress.com/section/opinion/feed/"
 }
 
-KEYWORDS = [
-    "CERC", "SERC", "MoP", "MNRE", "CEA", "SECI",
-    "Tariff", "Regulation", "Consultation", "DSM",
-    "Discom", "Electricity", "Power", "Transmission",
-    "Grid", "Procurement", "Amendment", "Policy"
+INCLUDE_KEYWORDS = [
+    "CERC", "SERC", "MoP", "MNRE", "CEA",
+    "Tariff", "Regulation", "Consultation",
+    "Electricity", "Power sector",
+    "DSM", "Transmission", "Discom",
+    "Policy", "Amendment", "Draft",
+    "Grid", "Load Dispatch"
 ]
 
-STATES = [
-    "Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka",
-    "Rajasthan", "Uttar Pradesh", "Bihar", "Delhi",
-    "Punjab", "Haryana", "Odisha", "Madhya Pradesh",
-    "Andhra Pradesh", "Telangana"
+EXCLUDE_KEYWORDS = [
+    "profit", "earnings", "shares",
+    "stock", "Q1", "Q2", "Q3", "Q4",
+    "IPO", "revenue", "market cap"
 ]
 
 
-def detect_state(title):
-    for state in STATES:
-        if state.lower() in title.lower():
-            return state
-    return ""
+def relevant(title):
+    title_lower = title.lower()
 
+    if any(ex.lower() in title_lower for ex in EXCLUDE_KEYWORDS):
+        return False
 
-def detect_authority(title):
-    for keyword in KEYWORDS:
-        if keyword.lower() in title.lower():
-            return keyword
-    return ""
+    if any(inc.lower() in title_lower for inc in INCLUDE_KEYWORDS):
+        return True
+
+    return False
 
 
 def scrape_rss(source_name, url):
@@ -55,27 +51,32 @@ def scrape_rss(source_name, url):
         root = ET.fromstring(response.content)
 
         for item in root.findall(".//item"):
-            title = item.find("title").text if item.find("title") is not None else ""
-            link = item.find("link").text if item.find("link") is not None else ""
+            title_elem = item.find("title")
+            link_elem = item.find("link")
+            date_elem = item.find("pubDate")
 
-            if not title or not link:
+            if title_elem is None or link_elem is None:
                 continue
 
-            if any(keyword.lower() in title.lower() for keyword in KEYWORDS):
+            title = title_elem.text.strip()
+            link = link_elem.text.strip()
+            date = date_elem.text.strip() if date_elem is not None else datetime.today().strftime("%Y-%m-%d")
+
+            if relevant(title):
                 items.append({
-                    "date": datetime.today().strftime("%Y-%m-%d"),
+                    "date": date,
                     "publication": source_name,
-                    "title": title.strip(),
-                    "authority_referenced": detect_authority(title),
+                    "title": title,
+                    "authority_referenced": "",
                     "topic": "Regulatory",
-                    "state": detect_state(title),
-                    "link": link.strip()
+                    "state": "",
+                    "link": link
                 })
 
         return items
 
     except Exception as e:
-        print(f"RSS error from {source_name}:", e)
+        print(f"Error in {source_name}:", e)
         return []
 
 
@@ -95,7 +96,7 @@ def main():
     with open(MEDIA_FILE, "w") as f:
         json.dump(final_items, f, indent=2)
 
-    print("RSS-based media intelligence updated.")
+    print("Refined regulatory media feed updated.")
 
 
 if __name__ == "__main__":

@@ -1,39 +1,40 @@
-import requests
-from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 import json
 import os
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0"
-}
+import time
 
 def scrape_cerc_local():
-    base_url = "https://cercind.gov.in/"
-    year_url = base_url + "2025.html"   # change year as needed
 
+    base_url = "https://cercind.gov.in/2025.html"
     items = []
 
-    response = requests.get(year_url, headers=HEADERS, timeout=15, verify=False)
-    soup = BeautifulSoup(response.text, "html.parser")
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
 
-    rows = soup.find_all("tr")
+    driver = webdriver.Chrome(options=options)
+
+    driver.get(base_url)
+    time.sleep(3)
+
+    rows = driver.find_elements(By.TAG_NAME, "tr")
 
     for row in rows:
-        cols = row.find_all("td")
+        cols = row.find_elements(By.TAG_NAME, "td")
         if len(cols) < 2:
             continue
 
-        date_text = cols[0].get_text(strip=True)
+        date_text = cols[0].text.strip()
 
-        link = cols[1].find("a", href=True)
-        if not link:
+        links = cols[1].find_elements(By.TAG_NAME, "a")
+        if not links:
             continue
 
-        title = link.get_text(strip=True)
-        href = link["href"]
-
-        if not href.startswith("http"):
-            href = base_url + href.lstrip("/")
+        title = links[0].text.strip()
+        href = links[0].get_attribute("href")
 
         items.append({
             "date": date_text,
@@ -44,6 +45,7 @@ def scrape_cerc_local():
             "link": href
         })
 
+    driver.quit()
     return items
 
 

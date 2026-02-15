@@ -1,12 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>State Authorities - India Power Governance Monitor</title>
-</head>
 <body>
   <h1>State Authorities</h1>
 
-  <table border="1">
+  <table border="1" id="state-table">
     <tr>
       <th>Date</th>
       <th>State</th>
@@ -18,7 +13,31 @@
     </tr>
   </table>
 
+  <script>
+    fetch("data/states.json")
+      .then(response => response.json())
+      .then(data => {
+        const table = document.getElementById("state-table");
+
+        data.forEach(item => {
+          const row = table.insertRow();
+
+          row.insertCell(0).innerText = item.date;
+          row.insertCell(1).innerText = item.state;
+          row.insertCell(2).innerText = item.authority;
+          row.insertCell(3).innerText = item.category;
+          row.insertCell(4).innerText = item.doc_type;
+          row.insertCell(5).innerText = item.title;
+
+          const linkCell = row.insertCell(6);
+          const link = document.createElement("a");
+          link.href = item.link;
+          link.innerText = "View";
+          linkCell.appendChild(link);
+        });
+      });
+  </script>
+
   <br>
   <a href="index.html">Back to Home</a>
 </body>
-</html>

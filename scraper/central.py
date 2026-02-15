@@ -3,44 +3,79 @@ import xml.etree.ElementTree as ET
 import json
 from datetime import datetime
 
-MEDIA_FILE = "data/media.json"
+CENTRAL_FILE = "data/central.json"
+STATE_FILE = "data/state.json"
 
 RSS_FEEDS = {
     "ET Power": "https://energy.economictimes.indiatimes.com/rss/power",
     "ET Top Stories": "https://energy.economictimes.indiatimes.com/rss/topstories",
-    "ET Recent": "https://energy.economictimes.indiatimes.com/rss/recentstories",
     "Mercom India": "https://www.mercomindia.com/feed",
     "PowerLine": "https://powerline.net.in/feed/",
     "PIB Power Ministry": "https://www.pib.gov.in/newsite/pmreleases.aspx?mincode=28&reg=3&lang=2",
     "Indian Express Opinion": "https://indianexpress.com/section/opinion/feed/"
 }
 
-INCLUDE_KEYWORDS = [
-    "CERC", "SERC", "MoP", "MNRE", "CEA",
-    "Tariff", "Regulation", "Consultation",
-    "Electricity", "Power sector",
-    "DSM", "Transmission", "Discom",
-    "Policy", "Amendment", "Draft",
-    "Grid", "Load Dispatch"
+POWER_KEYWORDS = [
+    "power", "electricity", "discom", "grid",
+    "transmission", "renewable", "thermal",
+    "hydro", "solar", "wind", "energy"
+]
+
+GOVERNANCE_KEYWORDS = [
+    "tariff", "regulation", "consultation",
+    "amendment", "order", "draft",
+    "policy", "reform", "approval",
+    "erc", "cerc", "serc", "mnre", "mop", "cea"
 ]
 
 EXCLUDE_KEYWORDS = [
     "profit", "earnings", "shares",
-    "stock", "Q1", "Q2", "Q3", "Q4",
-    "IPO", "revenue", "market cap"
+    "stock", "ipo", "quarter"
+]
+
+CENTRAL_AUTHORITIES = [
+    "CERC", "Central Electricity Regulatory Commission",
+    "MoP", "Ministry of Power",
+    "MNRE", "CEA", "SECI",
+    "Grid India", "NLDC"
+]
+
+STATES = [
+    "Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka",
+    "Rajasthan", "Uttar Pradesh", "Bihar", "Delhi",
+    "Punjab", "Haryana", "Odisha", "Madhya Pradesh",
+    "Andhra Pradesh", "Telangana"
 ]
 
 
-def relevant(title):
-    title_lower = title.lower()
+def is_relevant(title):
+    t = title.lower()
 
-    if any(ex.lower() in title_lower for ex in EXCLUDE_KEYWORDS):
+    if any(ex in t for ex in EXCLUDE_KEYWORDS):
         return False
 
-    if any(inc.lower() in title_lower for inc in INCLUDE_KEYWORDS):
-        return True
+    if not any(p in t for p in POWER_KEYWORDS):
+        return False
 
-    return False
+    if not any(g in t for g in GOVERNANCE_KEYWORDS):
+        return False
+
+    return True
+
+
+def classify_level(title):
+    for authority in CENTRAL_AUTHORITIES:
+        if authority.lower() in title.lower():
+            return "Central"
+
+    for state in STATES:
+        if state.lower() in title.lower():
+            return "State"
+
+    if "serc" in title.lower() or "erc" in title.lower():
+        return "State"
+
+    return None
 
 
 def scrape_rss(source_name, url):
@@ -62,16 +97,20 @@ def scrape_rss(source_name, url):
             link = link_elem.text.strip()
             date = date_elem.text.strip() if date_elem is not None else datetime.today().strftime("%Y-%m-%d")
 
-            if relevant(title):
-                items.append({
-                    "date": date,
-                    "publication": source_name,
-                    "title": title,
-                    "authority_referenced": "",
-                    "topic": "Regulatory",
-                    "state": "",
-                    "link": link
-                })
+            if not is_relevant(title):
+                continue
+
+            level = classify_level(title)
+            if level is None:
+                continue
+
+            items.append({
+                "date": date,
+                "publication": source_name,
+                "title": title,
+                "level": level,
+                "link": link
+            })
 
         return items
 
@@ -81,22 +120,29 @@ def scrape_rss(source_name, url):
 
 
 def main():
-    all_items = []
+    central_items = []
+    state_items = []
 
     for source_name, url in RSS_FEEDS.items():
-        all_items += scrape_rss(source_name, url)
+        articles = scrape_rss(source_name, url)
+
+        for article in articles:
+            if article["level"] == "Central":
+                central_items.append(article)
+            elif article["level"] == "State":
+                state_items.append(article)
 
     # Deduplicate by link
-    unique = {}
-    for item in all_items:
-        unique[item["link"]] = item
+    central_unique = {item["link"]: item for item in central_items}
+    state_unique = {item["link"]: item for item in state_items}
 
-    final_items = list(unique.values())
+    with open(CENTRAL_FILE, "w") as f:
+        json.dump(list(central_unique.values()), f, indent=2)
 
-    with open(MEDIA_FILE, "w") as f:
-        json.dump(final_items, f, indent=2)
+    with open(STATE_FILE, "w") as f:
+        json.dump(list(state_unique.values()), f, indent=2)
 
-    print("Refined regulatory media feed updated.")
+    print("Central and State feeds updated.")
 
 
 if __name__ == "__main__":
